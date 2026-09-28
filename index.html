@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rallenta — Your rest. Your readings. Your device.</title>
+<meta name="description" content="Rallenta is a private, manual-first wellness journal for sleep and everyday body readings. Your rest. Your readings. Your device.">
+<meta name="theme-color" content="#0b0e1a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+<!-- GA4 G-DJXTN8EDT4: page_view + app_launch only. No health data in analytics. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-DJXTN8EDT4"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){ window.dataLayer.push(arguments); }
+gtag('js', new Date());
+gtag('config', 'G-DJXTN8EDT4', { anonymize_ip: true });
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header id="topbar">
+  <div class="brand" aria-label="Rallenta">
+    <span class="moon" aria-hidden="true"></span>
+    <span>Rallenta<small>Your rest. Your readings. Your device.</small></span>
+  </div>
+</header>
+<main id="main">
+  <div id="app" role="main"></div>
+</main>
+<nav id="tabbar" aria-label="Primary">
+  <a href="#/today" data-tab="today"><span class="glyph" aria-hidden="true">☾</span>Today</a>
+  <a href="#/log" data-tab="log"><span class="glyph" aria-hidden="true">＋</span>Log</a>
+  <a href="#/trends" data-tab="trends"><span class="glyph" aria-hidden="true">∿</span>Trends</a>
+  <a href="#/audio" data-tab="audio"><span class="glyph" aria-hidden="true">♪</span>Audio</a>
+  <a href="#/settings" data-tab="settings"><span class="glyph" aria-hidden="true">⚙</span>Settings</a>
+</nav>
+<div id="toast-root" aria-live="polite"></div>
+<div id="modal-root"></div>
+<noscript><p style="padding:24px">Rallenta needs JavaScript to run. Your entries stay on this device.</p></noscript>
+<script src="data.js"></script>
+<script src="logic.js"></script>
+<script src="charts.js"></script>
+<script src="player.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
