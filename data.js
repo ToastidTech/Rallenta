@@ -182,7 +182,7 @@
       measured_at: measuredAt,
       context: input.context === undefined ? null : String(input.context),
       note: checkNote(input.note),
-      entry_source: 'manual',
+      entry_source: input.entry_source === 'camera-estimate' ? 'camera-estimate' : 'manual',
       created_at: nowLocalISO(),
       updated_at: nowLocalISO(),
       schema_version: SCHEMA_VERSION
@@ -348,8 +348,8 @@
         if (!entry) throw new Error('Entry not found: ' + id);
         var p = patch || {};
         if (p.id && p.id !== id) throw new TypeError('id is immutable.');
-        if (p.entry_source && p.entry_source !== 'manual') {
-          throw new TypeError('entry_source is always "manual" in MVP.');
+        if (p.entry_source && p.entry_source !== 'manual' && p.entry_source !== 'camera-estimate') {
+          throw new TypeError('entry_source must be "manual" or "camera-estimate".');
         }
         if (p.kind && p.kind !== entry.kind) throw new TypeError('kind is immutable.');
         var allowed = [

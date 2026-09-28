@@ -271,6 +271,13 @@ const daysAgo = (n, hh, mm) => {
   RallentaCharts.table(el5, { points: [], unit: 'bpm' });
   ok('table empty state', /No entries to list/.test(el5.innerHTML));
 
+  // camera-estimate entry_source
+  const est = await RallentaDB.saveVital({ metric_type: 'heart_rate', value_primary: 72, unit: 'bpm', measured_at: localISO(new Date()), note: null, entry_source: 'camera-estimate' });
+  ok('camera-estimate source saved', est.entry_source === 'camera-estimate');
+  const man = await RallentaDB.saveVital({ metric_type: 'heart_rate', value_primary: 70, unit: 'bpm', measured_at: localISO(new Date()), note: null });
+  ok('default source stays manual', man.entry_source === 'manual');
+  await RallentaDB.deleteEntry(est.id); await RallentaDB.deleteEntry(man.id);
+
   console.log('\nRESULT: ' + passed + ' passed, ' + failed + ' failed');
   process.exit(failed ? 1 : 0);
 })().catch(e => { console.error('HARNESS ERROR', e); process.exit(2); });

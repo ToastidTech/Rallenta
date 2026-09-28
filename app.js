@@ -195,6 +195,7 @@ function onboardingNeeded() {
 }
 
 async function render() {
+  stopPulse(); // release camera/torch if leaving the estimator mid-measurement
   const raw = currentRoute();
   const parts = raw.split('/').filter(Boolean);
   const name = parts[0] || 'today';
@@ -227,6 +228,7 @@ async function render() {
     if (name === 'audio') { await renderAudio(app); return; }
     if (name === 'settings') { await renderSettings(app); return; }
     if (name === 'premium') { renderPremium(app); return; }
+    if (name === 'pulse') { renderPulseEstimate(app); return; }
     if (name === 'about') { renderAbout(app); return; }
     app.innerHTML = '<h1>Not found</h1><p class="muted">That screen does not exist.</p><p><a class="btn" href="#/today">Back to Today</a></p>';
   } catch (e) {
@@ -394,9 +396,10 @@ function describeSleep(e) {
 }
 function describeVital(e) {
   const u = e.unit || '';
-  if (e.metric_type === 'blood_pressure') return e.value_primary + '/' + e.value_secondary + ' ' + u;
-  if (e.metric_type === 'bmi') return Number(e.value_primary).toFixed(1) + ' ' + u;
-  return e.value_primary + ' ' + u;
+  const est = e.entry_source === 'camera-estimate' ? ' · est.' : '';
+  if (e.metric_type === 'blood_pressure') return e.value_primary + '/' + e.value_secondary + ' ' + u + est;
+  if (e.metric_type === 'bmi') return Number(e.value_primary).toFixed(1) + ' ' + u + est;
+  return e.value_primary + ' ' + u + est;
 }
 
 function bindEntryActions(root) {
@@ -639,10 +642,19 @@ async function renderVitalForm(app, type) {
     '<input type="number" id="f-' + d.key + '" inputmode="decimal" min="0" step="any" value="' + esc(valOf(d.key)) + '" aria-label="' + esc(d.aria) + '">'
   ).join('');
 
+  let estHtml = '';
+  if (type === 'heart_rate' && !e && pulseSupported()) {
+    estHtml = '<div class="card"><h2 style="margin-top:0">Camera estimate</h2>' +
+      '<p class="hint">Use your rear camera + flash for a quick estimate — processed on this device, never uploaded. Estimate only, not a medical measurement.</p>' +
+      '<p><a class="btn" href="#/pulse">Estimate with camera</a></p>' +
+      '<p class="hint" id="est-used" hidden>✓ Estimate applied below — adjust the number if you like.</p></div>';
+  }
+
   app.innerHTML =
     '<h1>' + (e ? 'Edit ' : '') + esc(VITAL_LABELS[type]) + '</h1>' +
     '<div class="manual-banner">' + esc(MANUAL_LABEL) + '</div>' +
     '<div class="card">' + fields + unitToggle + '</div>' +
+    estHtml +
     bmiHelper +
     '<div class="card"><label for="measured">Date &amp; time</label>' +
     '<input type="datetime-local" id="measured" value="' + esc(when) + '" aria-label="Date and time of the reading">' +
@@ -681,6 +693,17 @@ async function renderVitalForm(app, type) {
     });
   }
 
+  // apply a fresh camera estimate, once
+  estimateSource = null;
+  if (type === 'heart_rate' && !e && pendingEstimate && Date.now() - pendingEstimate.at < 5 * 60 * 1000) {
+    const hrInp = $('#f-hr');
+    if (hrInp && !hrInp.value) hrInp.value = String(pendingEstimate.bpm);
+    estimateSource = 'camera-estimate';
+    pendingEstimate = null;
+    const used = $('#est-used');
+    if (used) used.hidden = false;
+  }
+
   $('#vital-next').addEventListener('click', () => {
     const vals = {};
     for (const d of defs) {
@@ -700,8 +723,10 @@ async function renderVitalForm(app, type) {
       if (!measured) { toast('Enter the date and time of the reading.'); return; }
       pendingVital = {
         type: type, vals: vals, unit: unit,
-        measured_at: localISO(measured), note: $('#note').value.trim() || null
+        measured_at: localISO(measured), note: $('#note').value.trim() || null,
+        source: estimateSource || (e && e.entry_source === 'camera-estimate' ? 'camera-estimate' : null)
       };
+      estimateSource = null;
       renderVitalReview(app, pendingVital);
     }
   });
@@ -716,6 +741,7 @@ function plausConfirm(message, onSaveAsEntered) {
 
 function vitalToEntry(pv) {
   const base = { metric_type: pv.type, unit: pv.unit, measured_at: pv.measured_at, note: pv.note };
+  if (pv.source === 'camera-estimate') base.entry_source = 'camera-estimate';
   if (pv.type === 'blood_pressure') { base.value_primary = pv.vals.systolic; base.value_secondary = pv.vals.diastolic; }
   else if (pv.type === 'heart_rate') base.value_primary = pv.vals.hr;
   else if (pv.type === 'blood_sugar') base.value_primary = pv.vals.glucose;
@@ -733,11 +759,13 @@ function vitalSummary(pv) {
 }
 
 function renderVitalReview(app, pv) {
+  const banner = pv.source === 'camera-estimate' ? EST_LABEL : MANUAL_LABEL;
   app.innerHTML =
     '<h1>Review ' + esc(VITAL_LABELS[pv.type]) + '</h1>' +
-    '<div class="manual-banner">' + esc(MANUAL_LABEL) + '</div>' +
+    '<div class="manual-banner">' + esc(banner) + '</div>' +
     '<div class="card"><dl class="small">' +
     row('Reading', esc(vitalSummary(pv))) +
+    (pv.source === 'camera-estimate' ? row('Source', 'Camera estimate') : '') +
     row('Date & time', esc(fmtDateTime(pv.measured_at, timeFormat()))) +
     row('Note', pv.note ? esc(pv.note) : '—') +
     '</dl></div>' +
@@ -1136,6 +1164,234 @@ function renderPremium(app) {
       }
     });
   }
+}
+
+/* ---------- #/pulse : camera + torch PPG heart-rate estimator ---------- */
+const EST_LABEL = 'Camera estimate — approximate, not a medical measurement.';
+let pulse = null;          // active measurement state, or null
+let pendingEstimate = null; // { bpm, at } — consumed once by the heart-rate form
+let estimateSource = null;  // 'camera-estimate' while an estimate is being saved
+
+function stopPulse() {
+  if (!pulse) return;
+  const p = pulse; pulse = null;
+  try {
+    if (p.timer) clearInterval(p.timer);
+    if (p.uiTimer) clearInterval(p.uiTimer);
+    if (p.track) { try { p.track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) {} try { p.track.stop(); } catch (e) {} }
+    if (p.stream) p.stream.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} });
+  } catch (e) {}
+}
+
+function pulseSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+function renderPulseEstimate(app) {
+  if (!pulseSupported()) {
+    app.innerHTML = '<h1>Estimate pulse</h1>' +
+      '<div class="card"><p><strong>Camera estimate is not available on this device or browser.</strong></p>' +
+      '<p class="muted">It needs camera access with flash control. You can still type your reading in manually.</p>' +
+      '<p><a class="btn btn-primary" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
+    return;
+  }
+  app.innerHTML =
+    '<h1>Estimate pulse</h1>' +
+    '<div class="card"><h2 style="margin-top:0">How it works</h2>' +
+    '<ol class="small"><li>Place your fingertip gently over the <strong>rear camera lens</strong>, covering it fully.</li>' +
+    '<li>The flash turns on and the app watches tiny brightness changes as blood pulses through your finger.</li>' +
+    '<li>Hold still for about 30 seconds.</li></ol>' +
+    '<p class="hint">Video is processed on this device only — nothing is recorded or uploaded. The result is an <strong>estimate</strong>, not a medical measurement. Do not make health decisions from it.</p>' +
+    '<p class="row"><button class="btn-primary" id="pulse-start">Start</button><a class="btn btn-ghost" href="#/log/vital/heart_rate">Cancel</a></p></div>' +
+    '<div id="pulse-live"></div>';
+  $('#pulse-start').addEventListener('click', () => startPulseMeasurement(app));
+}
+
+async function startPulseMeasurement(app) {
+  const live = $('#pulse-live');
+  live.innerHTML = '<div class="card"><p class="muted">Requesting camera…</p></div>';
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 320 }, height: { ideal: 240 } },
+      audio: false
+    });
+  } catch (err) {
+    live.innerHTML = '<div class="card"><p><strong>Camera unavailable.</strong></p>' +
+      '<p class="muted">' + esc(err && err.name === 'NotAllowedError'
+        ? 'Camera permission was denied. You can enable it in your browser settings, or just type your reading in manually.'
+        : 'Could not open the camera. You can still type your reading in manually.') + '</p>' +
+      '<p><a class="btn btn-primary" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
+    return;
+  }
+  const track = stream.getVideoTracks()[0];
+  let torchOk = false;
+  try {
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps.torch) { await track.applyConstraints({ advanced: [{ torch: true }] }); torchOk = true; }
+  } catch (err) { torchOk = false; }
+  if (!torchOk) {
+    try { track.stop(); } catch (e) {}
+    live.innerHTML = '<div class="card"><p><strong>Flash control is not available.</strong></p>' +
+      '<p class="muted">This estimate needs the camera flash (torch mode). You can still type your reading in manually.</p>' +
+      '<p><a class="btn btn-primary" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
+    return;
+  }
+
+  live.innerHTML =
+    '<div class="card"><h2 style="margin-top:0">Measuring…</h2>' +
+    '<p class="muted small">Fingertip covering the rear lens · hold still</p>' +
+    '<div class="spread"><video id="pulse-vid" muted playsinline autoplay style="width:96px;height:72px;border-radius:8px;background:#000"></video>' +
+    '<div class="pulse-bpm" id="pulse-bpm" aria-live="polite">—</div></div>' +
+    '<canvas id="pulse-trace" class="pulse-trace" width="300" height="80" aria-hidden="true"></canvas>' +
+    '<p class="hint" id="pulse-quality">Gathering signal…</p>' +
+    '<div class="progress" aria-hidden="true"><div class="progress-bar" id="pulse-prog"></div></div>' +
+    '<p class="row"><button class="btn-primary" id="pulse-done" disabled>Done</button>' +
+    '<button class="btn-ghost" id="pulse-cancel">Cancel</button></p></div>';
+
+  const video = $('#pulse-vid');
+  video.srcObject = stream;
+  try { await video.play(); } catch (e) {}
+
+  const sampleCanvas = document.createElement('canvas');
+  sampleCanvas.width = 48; sampleCanvas.height = 48;
+  const sctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+
+  pulse = {
+    stream: stream, track: track, samples: [], timer: null, uiTimer: null,
+    startAt: Date.now(), bpm: null, bpmHist: [], good: false, done: false
+  };
+
+  // sample mean red channel at ~10 fps
+  pulse.timer = setInterval(() => {
+    if (!pulse || pulse.done) return;
+    try {
+      sctx.drawImage(video, 0, 0, 48, 48);
+      const d = sctx.getImageData(0, 0, 48, 48).data;
+      let sum = 0; const px = d.length / 4;
+      for (let i = 0; i < d.length; i += 4) sum += d[i];
+      pulse.samples.push({ t: Date.now(), r: sum / px });
+      const cutoff = Date.now() - 35000;
+      while (pulse.samples.length && pulse.samples[0].t < cutoff) pulse.samples.shift();
+    } catch (e) {}
+    const elapsed = (Date.now() - pulse.startAt) / 1000;
+    const bar = $('#pulse-prog');
+    if (bar) bar.style.width = Math.min(100, (elapsed / 30) * 100) + '%';
+    if (elapsed >= 30) finishPulseMeasurement(true);
+  }, 100);
+
+  // analyze + redraw UI once a second
+  pulse.uiTimer = setInterval(() => { if (pulse && !pulse.done) pulseAnalyze(); }, 1000);
+
+  $('#pulse-cancel').addEventListener('click', () => { stopPulse(); navigate('log/vital/heart_rate'); });
+  $('#pulse-done').addEventListener('click', () => finishPulseMeasurement(false));
+}
+
+function pulseAnalyze() {
+  const p = pulse; if (!p) return;
+  const now = Date.now();
+  const win = p.samples.filter((s) => s.t >= now - 20000);
+  const qEl = $('#pulse-quality'), bpmEl = $('#pulse-bpm'), doneBtn = $('#pulse-done');
+  if (win.length < 80) { // < ~8 s of data
+    if (qEl) qEl.textContent = 'Gathering signal… keep your finger still.';
+    drawPulseTrace(win, []);
+    return;
+  }
+  // detrend: subtract ~1.5 s moving average
+  const W = 15, det = [];
+  for (let i = 0; i < win.length; i++) {
+    let m = 0, c = 0;
+    for (let j = Math.max(0, i - W); j <= Math.min(win.length - 1, i + W); j++) { m += win[j].r; c++; }
+    det.push(win[i].r - m / c);
+  }
+  const mean = win.reduce((a, s) => a + s.r, 0) / win.length;
+  const sd = Math.sqrt(det.reduce((a, v) => a + v * v, 0) / det.length);
+  const quality = mean > 0 ? sd / mean : 0; // AC/DC ratio
+  p.good = quality >= 0.0012;
+
+  // peak detection, min 0.35 s apart (≈170 bpm ceiling)
+  const peaks = [];
+  for (let i = 2; i < det.length - 2; i++) {
+    if (det[i] > det[i - 1] && det[i] >= det[i + 1] && det[i] > 0.45 * sd) {
+      const t = win[i].t;
+      if (!peaks.length || t - peaks[peaks.length - 1] >= 350) peaks.push(t);
+    }
+  }
+  let bpm = null;
+  if (peaks.length >= 4) {
+    const iv = [];
+    for (let i = 1; i < peaks.length; i++) iv.push(peaks[i] - peaks[i - 1]);
+    iv.sort((a, b) => a - b);
+    const med = iv[Math.floor(iv.length / 2)] / 1000;
+    const b = 60 / med;
+    if (b >= 40 && b <= 180) bpm = b;
+  }
+  if (bpm !== null) {
+    p.bpmHist.push(bpm);
+    if (p.bpmHist.length > 3) p.bpmHist.shift();
+    const s = p.bpmHist.slice().sort((a, b) => a - b);
+    p.bpm = s[Math.floor(s.length / 2)];
+  }
+  const elapsed = (now - p.startAt) / 1000;
+  if (bpmEl) bpmEl.textContent = p.bpm !== null ? '≈ ' + Math.round(p.bpm) + ' bpm' : '—';
+  if (qEl) {
+    qEl.textContent = !p.good
+      ? 'Weak signal — press your fingertip firmly over the lens, covering it fully.'
+      : (p.bpm !== null ? 'Good signal.' : 'Signal found — measuring…');
+    qEl.className = 'hint' + (p.good ? '' : ' warn');
+  }
+  if (doneBtn) doneBtn.disabled = !(p.bpm !== null && p.good && elapsed >= 12);
+  drawPulseTrace(win, det);
+}
+
+function drawPulseTrace(win, det) {
+  const cv = $('#pulse-trace'); if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  if (!win.length || !det.length) return;
+  const show = Math.min(win.length, 120);
+  const d = det.slice(-show);
+  let mx = 0; d.forEach((v) => { mx = Math.max(mx, Math.abs(v)); });
+  if (mx === 0) mx = 1;
+  ctx.strokeStyle = '#d88f54'; ctx.lineWidth = 2; ctx.beginPath();
+  d.forEach((v, i) => {
+    const x = (i / (show - 1)) * W;
+    const y = H / 2 - (v / mx) * (H / 2 - 6);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+}
+
+function finishPulseMeasurement(auto) {
+  const p = pulse; if (!p || p.done) return;
+  p.done = true;
+  const bpm = p.bpm !== null && p.good ? Math.round(p.bpm) : null;
+  const elapsed = Math.round((Date.now() - p.startAt) / 1000);
+  stopPulse();
+  const app = $('#app');
+  if (bpm === null) {
+    app.innerHTML = '<h1>Estimate pulse</h1>' +
+      '<div class="card"><p><strong>Could not get a clean reading.</strong></p>' +
+      '<p class="muted">Tips: cover the rear lens fully with your fingertip, press gently but firmly, and hold very still. Bright rooms and shaky hands make it harder.</p>' +
+      '<p class="row"><button class="btn-primary" id="pulse-retry">Try again</button>' +
+      '<a class="btn btn-ghost" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
+    $('#pulse-retry').addEventListener('click', () => renderPulseEstimate(app));
+    return;
+  }
+  app.innerHTML = '<h1>Estimate pulse</h1>' +
+    '<div class="card accent"><h2 style="margin-top:0">Estimated pulse</h2>' +
+    '<p class="pulse-result">≈ ' + bpm + ' <span class="muted">bpm</span></p>' +
+    '<p class="muted small">Measured over ~' + elapsed + 's with your camera and flash.</p>' +
+    '<div class="manual-banner">' + esc(EST_LABEL) + '</div>' +
+    '<p class="row"><button class="btn-primary" id="pulse-use">Use this estimate</button>' +
+    '<button class="btn" id="pulse-retry">Measure again</button>' +
+    '<a class="btn btn-ghost" href="#/log/vital/heart_rate">Cancel</a></p></div>';
+  $('#pulse-retry').addEventListener('click', () => renderPulseEstimate(app));
+  $('#pulse-use').addEventListener('click', () => {
+    pendingEstimate = { bpm: bpm, at: Date.now() };
+    navigate('log/vital/heart_rate');
+  });
 }
 
 /* ---------- #/about ---------- */
