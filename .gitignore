@@ -1,0 +1,2 @@
+# Rallenta — do not commit synth intermediates (~170 MB)
+audio/*_master.wav

@@ -1,0 +1,24 @@
+{
+  "tracks": [
+    {
+      "id": "rain-bed",
+      "title": "Rallenta Rain",
+      "family": "rain",
+      "file": "rain-bed-rallenta-v1.mp3",
+      "duration_s": 300.0,
+      "sha256": "eede4ced80c320e8c6f3aa8f47c2eec4fa6d1798267c224f71d2dbe921d7488b",
+      "bytes": 4800895,
+      "version": 1
+    },
+    {
+      "id": "ambient-pad",
+      "title": "Rallenta Drift",
+      "family": "ambient",
+      "file": "ambient-pad-rallenta-v1.mp3",
+      "duration_s": 300.0,
+      "sha256": "403b6065719fb30d478cef440ad822dd8c9241f5ad01bbdb8a99885ff41a2bab",
+      "bytes": 4800896,
+      "version": 1
+    }
+  ]
+}
