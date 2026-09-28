@@ -265,16 +265,18 @@ def synth_pad():
         # slow per-voice swell: integer cycles k, gentle depth
         sw = 0.78 + 0.22 * np.sin(2.0 * np.pi * k * t / DUR + ph)
         s = np.sin(phase).astype(np.float32)
-        # triangle-ish: add soft 3rd and 5th partials (sparse harmonics, low contrast)
-        s = s + 0.18 * np.sin(3.0 * phase).astype(np.float32) \
-              + 0.06 * np.sin(5.0 * phase).astype(np.float32)
+        # full-bodied harmonics: strong 2nd/3rd/4th so the chord reads on
+        # small phone speakers (fundamentals alone sit below their range)
+        s = s + 0.30 * np.sin(2.0 * phase).astype(np.float32) \
+              + 0.18 * np.sin(3.0 * phase).astype(np.float32) \
+              + 0.10 * np.sin(4.0 * phase).astype(np.float32)
         s = s * sw.astype(np.float32) * amp
         pan = 0.5 + 0.18 * np.sin(i * 2.4)                      # static gentle stereo spread
         L += s * np.cos(pan * np.pi / 2.0)
         R += s * np.sin(pan * np.pi / 2.0)
 
     # shimmer: octave partials fading in/out over very slow integer cycles (evolution, not melody)
-    for f, amp, k, ph in [(220.0, 0.16, 2, 0.4), (440.0, 0.07, 3, 2.9), (329.63, 0.10, 2, 1.7)]:
+    for f, amp, k, ph in [(220.0, 0.22, 2, 0.4), (440.0, 0.11, 3, 2.9), (329.63, 0.14, 2, 1.7)]:
         phv = 2.0 * np.pi * f * t
         evo = (0.5 + 0.5 * np.sin(2.0 * np.pi * k * t / DUR + ph)) ** 2
         s = np.sin(phv).astype(np.float32) * evo.astype(np.float32) * amp
@@ -289,7 +291,8 @@ def synth_pad():
 
     air_l = fft_filter_noise(rng, n_ext, air_shape)
     air_r = fft_filter_noise(rng, n_ext, air_shape)
-    air_env = 0.05 + 0.04 * (0.5 + 0.5 * env_envelope(t, 7, 0.2))
+    # airy top kept quiet: it reads as hiss on phone speakers otherwise
+    air_env = 0.025 + 0.02 * (0.5 + 0.5 * env_envelope(t, 7, 0.2))
     L = L + air_env * air_l
     R = R + air_env * air_r
 
@@ -310,7 +313,7 @@ def synth_pad():
 # the loop seamless. Best experienced on headphones.
 
 def synth_pad_8d(revolutions=36):
-    master_wav = os.path.join(HERE, "ambient-pad-rallenta-v1_master.wav")
+    master_wav = os.path.join(HERE, "ambient-pad-rallenta-v2_master.wav")
     if not os.path.exists(master_wav):
         raise SystemExit("pad master WAV missing — build the pad first")
     raw = subprocess.run(

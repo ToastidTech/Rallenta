@@ -14,21 +14,21 @@
       "id": "ambient-pad",
       "title": "Rallenta Drift",
       "family": "ambient",
-      "file": "ambient-pad-rallenta-v1.mp3",
+      "file": "ambient-pad-rallenta-v2.mp3",
       "duration_s": 300.0,
-      "sha256": "a9d4097dd21357bcacaf05b4a81289c3db5380d362d73920133e81d1bd4d53d0",
+      "sha256": "c1373e9c6d5247723780fa286822488ecceedfd16f9cac199460454a500505a0",
       "bytes": 4800896,
-      "version": 1
+      "version": 2
     },
     {
       "id": "spatial-8d",
       "title": "Rallenta Drift 8D",
       "family": "spatial",
-      "file": "spatial-8d-rallenta-v1.mp3",
+      "file": "spatial-8d-rallenta-v2.mp3",
       "duration_s": 300.0,
-      "sha256": "e9e29aacc48ed94f36a7d20da330a36fba15ab0bd1290288033dc5f62bfe4f37",
+      "sha256": "3235df8461ff8168d47edb375a46a8a34658a3693694643ebe33337afa76300a",
       "bytes": 4800899,
-      "version": 1
+      "version": 2
     }
   ]
 }
