@@ -261,7 +261,7 @@ def synth_pad():
         f_d = f * 2.0 ** (detune_cents / 1200.0)
         # slow brightness drift: +/-2 cents over 4 integer cycles (phase-mod, loop-safe)
         drift = 0.02 * np.sin(2.0 * np.pi * 4 * t / DUR + ph)
-        phase = 2.0 * np.pi * f_d * t / SR + drift * 2.0 * np.pi * f_d * t / SR * 0.01
+        phase = 2.0 * np.pi * f_d * t + drift * 2.0 * np.pi * f_d * t * 0.01
         # slow per-voice swell: integer cycles k, gentle depth
         sw = 0.78 + 0.22 * np.sin(2.0 * np.pi * k * t / DUR + ph)
         s = np.sin(phase).astype(np.float32)
@@ -275,7 +275,7 @@ def synth_pad():
 
     # shimmer: octave partials fading in/out over very slow integer cycles (evolution, not melody)
     for f, amp, k, ph in [(220.0, 0.16, 2, 0.4), (440.0, 0.07, 3, 2.9), (329.63, 0.10, 2, 1.7)]:
-        phv = 2.0 * np.pi * f * t / SR
+        phv = 2.0 * np.pi * f * t
         evo = (0.5 + 0.5 * np.sin(2.0 * np.pi * k * t / DUR + ph)) ** 2
         s = np.sin(phv).astype(np.float32) * evo.astype(np.float32) * amp
         L += s * 0.7071
