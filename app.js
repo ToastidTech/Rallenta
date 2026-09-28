@@ -1225,16 +1225,24 @@ async function startPulseMeasurement(app) {
     return;
   }
   const track = stream.getVideoTracks()[0];
+  // Try to switch the torch on directly: getCapabilities() under-reports torch
+  // on several Android phones, but getSettings().torch tells the truth after
+  // the constraint is applied.
   let torchOk = false;
-  try {
-    const caps = track.getCapabilities ? track.getCapabilities() : {};
-    if (caps.torch) { await track.applyConstraints({ advanced: [{ torch: true }] }); torchOk = true; }
-  } catch (err) { torchOk = false; }
+  for (const c of [{ advanced: [{ torch: true }] }, { torch: true }]) {
+    try {
+      await track.applyConstraints(c);
+      const s = track.getSettings ? track.getSettings() : {};
+      if (s.torch === true) { torchOk = true; break; }
+    } catch (err) { /* try next form */ }
+  }
   if (!torchOk) {
     try { track.stop(); } catch (e) {}
     live.innerHTML = '<div class="card"><p><strong>Flash control is not available.</strong></p>' +
-      '<p class="muted">This estimate needs the camera flash (torch mode). You can still type your reading in manually.</p>' +
-      '<p><a class="btn btn-primary" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
+      '<p class="muted">This estimate needs the camera flash (torch mode). If another app is using the camera, close it and retry — otherwise type your reading in manually.</p>' +
+      '<p class="row"><button class="btn-primary" id="pulse-retry2">Retry</button>' +
+      '<a class="btn btn-ghost" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
+    $('#pulse-retry2').addEventListener('click', () => renderPulseEstimate(app));
     return;
   }
 
