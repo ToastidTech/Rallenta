@@ -1198,7 +1198,7 @@ function renderPulseEstimate(app) {
   app.innerHTML =
     '<h1>Estimate pulse</h1>' +
     '<div class="card"><h2 style="margin-top:0">How it works</h2>' +
-    '<ol class="small"><li>Place your fingertip gently over the <strong>rear camera lens</strong>, covering it fully.</li>' +
+    '<ol class="small"><li>Place your fingertip over the <strong>rear camera lens and the flash</strong> next to it — one finger covers both.</li>' +
     '<li>The flash turns on and the app watches tiny brightness changes as blood pulses through your finger.</li>' +
     '<li>Hold still for about 30 seconds.</li></ol>' +
     '<p class="hint">Video is processed on this device only — nothing is recorded or uploaded. The result is an <strong>estimate</strong>, not a medical measurement. Do not make health decisions from it.</p>' +
@@ -1240,7 +1240,7 @@ async function startPulseMeasurement(app) {
 
   live.innerHTML =
     '<div class="card"><h2 style="margin-top:0">Measuring…</h2>' +
-    '<p class="muted small">Fingertip covering the rear lens · hold still</p>' +
+    '<p class="muted small">Fingertip over lens + flash · hold still</p>' +
     '<div class="spread"><video id="pulse-vid" muted playsinline autoplay style="width:96px;height:72px;border-radius:8px;background:#000"></video>' +
     '<div class="pulse-bpm" id="pulse-bpm" aria-live="polite">—</div></div>' +
     '<canvas id="pulse-trace" class="pulse-trace" width="300" height="80" aria-hidden="true"></canvas>' +
@@ -1336,7 +1336,7 @@ function pulseAnalyze() {
   if (bpmEl) bpmEl.textContent = p.bpm !== null ? '≈ ' + Math.round(p.bpm) + ' bpm' : '—';
   if (qEl) {
     qEl.textContent = !p.good
-      ? 'Weak signal — press your fingertip firmly over the lens, covering it fully.'
+      ? 'Weak signal — press your fingertip firmly over the lens and flash, covering both fully.'
       : (p.bpm !== null ? 'Good signal.' : 'Signal found — measuring…');
     qEl.className = 'hint' + (p.good ? '' : ' warn');
   }
@@ -1373,7 +1373,7 @@ function finishPulseMeasurement(auto) {
   if (bpm === null) {
     app.innerHTML = '<h1>Estimate pulse</h1>' +
       '<div class="card"><p><strong>Could not get a clean reading.</strong></p>' +
-      '<p class="muted">Tips: cover the rear lens fully with your fingertip, press gently but firmly, and hold very still. Bright rooms and shaky hands make it harder.</p>' +
+      '<p class="muted">Tips: cover the rear lens and flash fully with your fingertip, press gently but firmly, and hold very still. Bright rooms and shaky hands make it harder.</p>' +
       '<p class="row"><button class="btn-primary" id="pulse-retry">Try again</button>' +
       '<a class="btn btn-ghost" href="#/log/vital/heart_rate">Enter manually</a></p></div>';
     $('#pulse-retry').addEventListener('click', () => renderPulseEstimate(app));
