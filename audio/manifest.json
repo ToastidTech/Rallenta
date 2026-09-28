@@ -19,6 +19,16 @@
       "sha256": "a9d4097dd21357bcacaf05b4a81289c3db5380d362d73920133e81d1bd4d53d0",
       "bytes": 4800896,
       "version": 1
+    },
+    {
+      "id": "spatial-8d",
+      "title": "Rallenta Drift 8D",
+      "family": "spatial",
+      "file": "spatial-8d-rallenta-v1.mp3",
+      "duration_s": 300.0,
+      "sha256": "e9e29aacc48ed94f36a7d20da330a36fba15ab0bd1290288033dc5f62bfe4f37",
+      "bytes": 4800899,
+      "version": 1
     }
   ]
 }

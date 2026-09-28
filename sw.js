@@ -1,6 +1,6 @@
 /* Rallenta service worker — offline-first app shell. Never touches IndexedDB user data. */
 'use strict';
-const CACHE = 'rallenta-shell-v3';
+const CACHE = 'rallenta-shell-v4';
 const SHELL = [
   './',
   'index.html',
@@ -18,7 +18,8 @@ const SHELL = [
 // Audio tracks are cached when present; the audio worker may not have built them yet.
 const AUDIO = [
   'audio/rain-bed-rallenta-v1.mp3',
-  'audio/ambient-pad-rallenta-v1.mp3'
+  'audio/ambient-pad-rallenta-v1.mp3',
+  'audio/spatial-8d-rallenta-v1.mp3'
 ];
 
 self.addEventListener('install', (event) => {

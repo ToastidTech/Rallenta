@@ -854,7 +854,7 @@ async function renderAudio(app) {
     ? '<div class="empty"><p><strong>Audio tracks are still being prepared.</strong></p><p>Check back shortly — your wind-down library will appear here.</p></div>'
     : tracks.map((t, i) =>
       '<div class="track"><div><div class="t-title' + (player.index === i ? ' playing' : '') + '">' + esc(t.title || t.id) + '</div>' +
-      '<div class="muted small">' + esc(t.family || 'ambient') + (t.duration_s ? ' · ' + fmtDur(t.duration_s / 60) : '') + '</div></div>' +
+      '<div class="muted small">' + esc(t.family || 'ambient') + (t.duration_s ? ' · ' + fmtDur(t.duration_s / 60) : '') + (t.family === 'spatial' ? ' · 🎧 headphones best' : '') + '</div></div>' +
       '<button class="btn" data-track="' + i + '" aria-label="' + (player.index === i && player.playing ? 'Pause ' : 'Play ') + esc(t.title || t.id) + '">' +
       (player.index === i && player.playing ? '❚❚' : '▶') + '</button></div>').join('');
 

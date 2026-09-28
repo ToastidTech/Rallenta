@@ -304,6 +304,42 @@ def synth_pad():
     return loop_fold(stereo, XF)
 
 
+# ---------------------------------------------------------------- track 3: 8D spatial mix
+# Classic "8D" effect: the pad circles around the listener's head via
+# automated equal-swing stereo panning. Integer revolutions over DUR keep
+# the loop seamless. Best experienced on headphones.
+
+def synth_pad_8d(revolutions=36):
+    master_wav = os.path.join(HERE, "ambient-pad-rallenta-v1_master.wav")
+    if not os.path.exists(master_wav):
+        raise SystemExit("pad master WAV missing — build the pad first")
+    raw = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", master_wav,
+         "-ac", "2", "-ar", str(SR), "-f", "f32le", "-"],
+        capture_output=True, check=True).stdout
+    stereo = np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).T.copy()
+    n = stereo.shape[1]
+    t = np.arange(n, dtype=np.float64) / SR
+
+    # one full ear-to-ear sweep per revolution; 36 revs / 300 s ~ 8.3 s each
+    theta = 2.0 * np.pi * revolutions * t / DUR
+    c = np.cos(theta).astype(np.float32)
+    l_gain = 0.5 * (1.0 + c)
+    r_gain = 0.5 * (1.0 - c)
+    # gentle distance cue: slight dip as the sound passes each ear
+    dist = (0.84 + 0.16 * (1.0 - c ** 2)).astype(np.float32)
+    stereo[0] *= l_gain * dist
+    stereo[1] *= r_gain * dist
+
+    # comfort level: RMS -22 dBFS, peak cap -2 dBFS (same as the pad)
+    rms = float(np.sqrt(np.mean(stereo ** 2)))
+    stereo *= 10 ** (-22.0 / 20.0) / max(rms, 1e-9)
+    pk = float(np.max(np.abs(stereo)))
+    if pk > 0.794:
+        stereo *= 0.794 / pk
+    return stereo.astype(np.float32)
+
+
 # ---------------------------------------------------------------- verification
 
 def verify_mp3(path, label):
