@@ -7,6 +7,12 @@
 /* ---------- constants ---------- */
 const VISIBLE_DAYS = 14; // free tier: lists on Today/Trends show the most recent 14 days
 const GA4_ID = 'G-DJXTN8EDT4';
+const PAYPAL_URL = 'https://www.paypal.com/ncp/payment/XX79K37JEA9JL';
+const FOUNDER_PRICE = '$9.99';
+const ACTIVATION_CODE = 'RLT2026'; // manual-phase code; server verification lands in Phase 2
+const RECEIPT_MAILTO = 'mailto:info@toastidtech.com?subject=' +
+  encodeURIComponent('Rallenta Founding Member activation') + '&body=' +
+  encodeURIComponent('Hi! I just purchased Rallenta lifetime access.\n\nPayPal receipt details:\n- Name on payment:\n- Payment date:\n- Transaction ID (last 6):\n\nPlease send my activation code. Thanks!');
 const DISCLAIMER = 'Rallenta is a wellness journal, not a medical device. It does not measure vital signs, diagnose conditions, or provide medical advice.';
 const PLAUS_COPY = 'That value is outside the range usually accepted by this field. Check the number and unit, or save it as entered.';
 const DEBT_LABEL = 'Sleep-target gap estimate — against your chosen target, not a physiological measurement.';
@@ -95,6 +101,11 @@ function gaPageView(route) {
 function gaAppLaunch() {
   try {
     if (typeof gtag === 'function') gtag('event', 'app_launch');
+  } catch (e) {}
+}
+function gaBeginCheckout() {
+  try {
+    if (typeof gtag === 'function') gtag('event', 'begin_checkout', { currency: 'USD', value: 9.99 });
   } catch (e) {}
 }
 
@@ -215,6 +226,7 @@ async function render() {
     if (name === 'trends') { await renderTrends(app); return; }
     if (name === 'audio') { await renderAudio(app); return; }
     if (name === 'settings') { await renderSettings(app); return; }
+    if (name === 'premium') { renderPremium(app); return; }
     if (name === 'about') { renderAbout(app); return; }
     app.innerHTML = '<h1>Not found</h1><p class="muted">That screen does not exist.</p><p><a class="btn" href="#/today">Back to Today</a></p>';
   } catch (e) {
@@ -353,6 +365,7 @@ async function renderToday(app) {
 
   app.innerHTML =
     '<h1>Today</h1>' +
+    (prefs.foundingMember ? founderBadge() + '<br>' : '') +
     sleepCard +
     '<h2>Quick log</h2>' +
     '<div class="grid tiles">' + quick + '</div>' +
@@ -922,6 +935,11 @@ async function renderSettings(app) {
 
   app.innerHTML =
     '<h1>Settings</h1>' +
+    '<div class="card"><h2 style="margin-top:0">Rallenta Premium</h2>' +
+    ((prefs.foundingMember)
+      ? '<p>' + founderBadge() + '</p><p class="muted small">Lifetime access is active on this device.</p>'
+      : '<p>Founding Member lifetime access — <strong>' + esc(FOUNDER_PRICE) + '</strong> once, yours forever.</p>') +
+    '<p><a class="btn" href="#/premium">' + (prefs.foundingMember ? 'View membership' : 'Get lifetime access') + '</a></p></div>' +
     '<div class="card"><h2 style="margin-top:0">Units &amp; target</h2>' +
     '<label id="tf-l">Time format</label><div class="radio-row" role="radiogroup" aria-labelledby="tf-l">' +
     radioPill('tf', '12h', '12-hour', timeFormat() === '12h') + radioPill('tf', '24h', '24-hour', timeFormat() === '24h') + '</div>' +
@@ -1075,6 +1093,51 @@ function download(name, text, type) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
+/* ---------- #/premium ---------- */
+function founderBadge() {
+  return '<span class="founder-badge" role="status">★ Founding Member</span>';
+}
+function renderPremium(app) {
+  const member = !!(prefs && prefs.foundingMember);
+  let body;
+  if (member) {
+    body =
+      '<div class="card accent"><h2 style="margin-top:0">Lifetime access active</h2>' +
+      '<p>You backed Rallenta early — thank you. Every current and future feature is unlocked on this device, forever.</p>' +
+      '<p class="muted small">Activated ' + esc((prefs.foundingMemberAt || '').slice(0, 10)) + ' · stored on this device only.</p></div>';
+  } else {
+    body =
+      '<div class="card accent"><h2 style="margin-top:0">Founding Member — ' + esc(FOUNDER_PRICE) + ' once</h2>' +
+      '<p><strong>One payment. Yours forever.</strong></p>' +
+      '<ul><li>Every feature in Rallenta today.</li>' +
+      '<li>Every feature we ever add — locked in at this price.</li>' +
+      '<li>Directly supports independent development.</li></ul>' +
+      '<p><a class="btn btn-primary" id="pay-btn" href="' + PAYPAL_URL + '" target="_blank" rel="noopener">Get lifetime access — ' + esc(FOUNDER_PRICE) + '</a></p>' +
+      '<p class="hint">You pay securely on PayPal, then email your receipt to receive an activation code.</p></div>' +
+      '<div class="card"><h2 style="margin-top:0">Already paid?</h2>' +
+      '<p><a class="btn" href="' + RECEIPT_MAILTO + '">Email your receipt</a></p>' +
+      '<p class="hint">Send your PayPal receipt to info@toastidtech.com and we will reply with your activation code.</p>' +
+      '<label for="act-code">Activation code</label>' +
+      '<div class="row"><input id="act-code" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="Enter code" aria-label="Activation code" style="flex:1">' +
+      '<button class="btn-primary" id="act-btn">Activate</button></div></div>' +
+      '<p class="hint">Founding-member status is stored on this device only. Server-side verification arrives in a future update.</p>';
+  }
+  app.innerHTML = '<h1>Rallenta Premium</h1>' + body;
+  if (!member) {
+    $('#pay-btn').addEventListener('click', gaBeginCheckout);
+    $('#act-btn').addEventListener('click', async () => {
+      const v = ($('#act-code').value || '').trim().toUpperCase().replace(/[\s-]/g, '');
+      if (v === ACTIVATION_CODE) {
+        await savePrefs({ foundingMember: true, foundingMemberAt: localISO(new Date()) });
+        toast('Welcome, Founding Member.');
+        renderPremium(app);
+      } else {
+        toast('That code did not match — check it and try again.');
+      }
+    });
+  }
+}
+
 /* ---------- #/about ---------- */
 function renderAbout(app) {
   app.innerHTML =
@@ -1082,7 +1145,8 @@ function renderAbout(app) {
     '<img class="brand-mark" src="logo.webp" alt="Rallenta logo — copper crescent moon">' +
     '<div class="card"><h2 style="margin-top:0">Rallenta</h2>' +
     '<p><strong>Your rest. Your readings. Your device.</strong></p>' +
-    '<p class="muted">Version 1.0 — Phase 1 MVP. A private, manual-first wellness journal for sleep and everyday body readings, with original wind-down audio.</p></div>' +
+    '<p class="muted">Version 1.0 — Phase 1 MVP. A private, manual-first wellness journal for sleep and everyday body readings, with original wind-down audio.</p>' +
+    '<p><a class="btn" href="#/premium">Rallenta Premium — founding member access</a></p></div>' +
     '<div class="disclaimer-card" role="note"><h2>An honest note</h2>' +
     '<p>' + esc(DISCLAIMER) + '</p>' +
     '<p class="fine">We keep this promise on every screen, every export, and every version.</p></div>' +

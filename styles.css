@@ -151,6 +151,11 @@ input[type=range]{width:100%;min-height:var(--tap);accent-color:var(--accent)}
 }
 .disclaimer-card p{margin:0;font-size:.96rem;line-height:1.6;color:var(--text)}
 .disclaimer-card .fine{margin-top:12px;font-size:.8rem;color:var(--muted);font-style:italic}
+.founder-badge{
+  display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.04em;
+  color:#eec39a;border:1px solid rgba(216,143,84,.55);border-radius:999px;
+  padding:4px 12px;background:rgba(216,143,84,.12);margin:2px 0 8px;
+}
 .manual-banner{
   background:rgba(216,143,84,.10);
   border:1px solid rgba(216,143,84,.45);
