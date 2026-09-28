@@ -235,7 +235,8 @@ function renderWelcome(app) {
     '<p>Log your sleep and everyday body readings, notice your own patterns, and build a calmer wind-down routine — privately, on this device.</p></div>' +
     '<div class="card"><h2 style="margin-top:0">Local-first</h2>' +
     '<p>Everything you enter is saved <strong>on this device only</strong>. No account, no cloud sync, no ads. Export or delete your data any time from Settings.</p></div>' +
-    '<div class="disclaimer" role="note">' + esc(DISCLAIMER) + '</div>' +
+    '<div class="disclaimer-card" role="note"><h2>An honest note</h2>' +
+    '<p>' + esc(DISCLAIMER) + '</p></div>' +
     '<div class="check-line">' +
     '<input type="checkbox" id="accept" aria-describedby="accept-desc">' +
     '<label for="accept" style="margin:0;font-weight:600" id="accept-desc">I understand Rallenta is a wellness journal, not a medical device. Record my acceptance with today\'s date.</label>' +
@@ -1078,10 +1079,13 @@ function download(name, text, type) {
 function renderAbout(app) {
   app.innerHTML =
     '<h1>About Rallenta</h1>' +
+    '<img class="brand-mark" src="logo.webp" alt="Rallenta logo — copper crescent moon">' +
     '<div class="card"><h2 style="margin-top:0">Rallenta</h2>' +
     '<p><strong>Your rest. Your readings. Your device.</strong></p>' +
     '<p class="muted">Version 1.0 — Phase 1 MVP. A private, manual-first wellness journal for sleep and everyday body readings, with original wind-down audio.</p></div>' +
-    '<div class="disclaimer" role="note">' + esc(DISCLAIMER) + '</div>' +
+    '<div class="disclaimer-card" role="note"><h2>An honest note</h2>' +
+    '<p>' + esc(DISCLAIMER) + '</p>' +
+    '<p class="fine">We keep this promise on every screen, every export, and every version.</p></div>' +
     '<div class="card"><h2 style="margin-top:0">How your data works</h2>' +
     '<ul><li>Entries live in this browser\'s local storage only.</li>' +
     '<li>No account, no cloud sync, no ads, no trackers on your entries.</li>' +

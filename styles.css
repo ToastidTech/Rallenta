@@ -138,6 +138,19 @@ input[type=range]{width:100%;min-height:var(--tap);accent-color:var(--accent)}
   padding:12px 14px;border-radius:0 12px 12px 0;
   font-size:.92rem;margin:12px 0;
 }
+/* Classier disclaimer treatment — copper brand accent */
+.brand-mark{display:block;width:132px;height:132px;border-radius:30px;margin:6px auto 10px;box-shadow:0 10px 34px rgba(0,0,0,.5)}
+.disclaimer-card{
+  border:1px solid rgba(216,143,84,.38);
+  background:linear-gradient(180deg,rgba(216,143,84,.12),rgba(216,143,84,.03));
+  border-radius:18px;padding:20px 20px 16px;margin:18px 0;
+}
+.disclaimer-card h2{
+  font-family:Georgia,'Times New Roman',serif;font-weight:600;
+  font-size:1.3rem;margin:0 0 10px;color:#eec39a;letter-spacing:.01em;
+}
+.disclaimer-card p{margin:0;font-size:.96rem;line-height:1.6;color:var(--text)}
+.disclaimer-card .fine{margin-top:12px;font-size:.8rem;color:var(--muted);font-style:italic}
 .manual-banner{
   background:rgba(56,225,255,.08);
   border:1px solid rgba(56,225,255,.4);
