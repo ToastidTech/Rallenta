@@ -105,7 +105,7 @@ function gaAppLaunch() {
 }
 function gaBeginCheckout() {
   try {
-    if (typeof gtag === 'function') gtag('event', 'begin_checkout', { currency: 'USD', value: 9.99 });
+    if (typeof gtag === 'function') gtag('event', 'begin_checkout', { currency: 'USD', value: 9.99, items: [{ item_id: 'rallenta-lifetime', item_name: 'Rallenta Lifetime', price: 9.99, quantity: 1 }] });
   } catch (e) {}
 }
 

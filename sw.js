@@ -1,6 +1,6 @@
 /* Rallenta service worker — offline-first app shell. Never touches IndexedDB user data. */
 'use strict';
-const CACHE = 'rallenta-shell-v10';
+const CACHE = 'rallenta-shell-v11';
 const SHELL = [
   './',
   'index.html',
